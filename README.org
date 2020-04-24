@@ -1,0 +1,13 @@
+* tellme
+  add import or package for program.
+** install
+   clone repository.
+
+   using load-library in emacs.
+** usage
+   tellme
+
+   tellme-new-snippets
+** thanks
+   
+   
