@@ -1,4 +1,4 @@
-;;; tellme.el --- add import or package for program.
+;;; yas-h.el --- Aotu add head information for program using yasnippet.
 
 ;; Author: nicolas4d
 ;; Maintainer: nicolas4d
@@ -158,7 +158,7 @@ code is going to be codes."
         (if need-reload-yas
             ;; reload yas
             (yas-reload-all)
-          (message "Not found cod to new snippet."))))))
+          (message "Not found code to new snippet."))))))
 
 ;;;###autoload
 (defun tellme-snippet-file-name (code)
@@ -373,12 +373,24 @@ Returns ((expression)(rules))."
 
           (setq class-code (substring code 7 -1))
           (setq class-text (car (last (split-string class-code "\\."))))
-          (setq class-key (downcase class-text))
+          (setq class-key (tellme-java-snippet-key class-text))
           (setq class-name class-code)
           (tellme-snippet-variable-list class-name
                                         class-key
                                         class-text
                                         code))))))
+
+(defun tellme-java-snippet-key (str)
+  "生成java snippet key。"
+  (let* ((ret))
+    (if (yas-h-tow-more-camal-case-p str)
+          (setq ret (yas-h-uppercase-from-camel-case str))
+      (setq ret str))
+    (setq ret (downcase ret))
+    ret))
+
+(tellme-java-snippet-key "sdf")
+(tellme-java-snippet-key "SdFDC")
 ;;; Ends here for java
 
 ;;; For c++
@@ -503,6 +515,40 @@ Returns (((expression)(rules))...)."
                                         code))))))
 ;;; ends here for python
 
-(provide 'tellme)
+;;; Helper
+(defun yas-h-uppercase-from-camel-case (str)
+  "Extrack uppercase string from camel-case.
 
-;;; tellme.el ends here
+str - camel-case.
+example: CamelCase cc."
+  (let* ((string-list)
+         (ret-uppercase ()))
+    (setq string-list (string-to-list str))
+    (dolist (cur string-list t)
+      (when (and (>= cur 64) (<= cur 91))
+        (setq ret-uppercase (cons (byte-to-string cur) ret-uppercase))))
+    (reverse (nicolas4d/list-to-string ret-uppercase ""))))
+
+(yas-h-uppercase-from-camel-case "AaaaaZaaaADS")
+
+(defun yas-h-tow-more-camal-case-p (str)
+  "Predict the string CamalCase."
+  (let* ((ret)
+         (uppercase)
+         (len))
+    (setq uppercase (yas-h-uppercase-from-camel-case str))
+    (setq len (length uppercase))
+    (if (> len 1)
+        (setq ret t)
+      (setq ret nil))
+    ret))
+
+(yas-h-tow-more-camal-case-p "AA")
+(yas-h-tow-more-camal-case-p "A")
+
+;;; Helper ends here
+
+(provide 'yas-h)
+
+;;; yas-h.el ends here
+
