@@ -10,6 +10,10 @@
 ;;; Code:
 
 ;;; common
+
+(defvar dc-yasnippet-dir "dc-yasnippet"
+  "Save snippet directory name.")
+
 ;;;###autoload
 (defun dc-yasnippet-list-to-string (list seperator)
   "List to string.
@@ -47,20 +51,22 @@ example: CamelCase cc."
 ;;(dc-yasnippet-uppercase-from-camel-case "AaaaaZaaaADS")
 
 ;;;###autoload
-(defun dc-yasnippet-tow-more-camal-case-p (str)
-  "Predict the string CamalCase."
+(defun dc-yasnippet-uppercase-in-camal-case->= (str length)
+  "Predict the string CamalCase.
+
+length : >= length."
   (let* ((ret)
          (uppercase)
          (len))
     (setq uppercase (dc-yasnippet-uppercase-from-camel-case str))
     (setq len (length uppercase))
-    (if (> len 1)
+    (if (>= len length)
         (setq ret t)
       (setq ret nil))
     ret))
 
-;;(dc-yasnippet-tow-more-camal-case-p "AA")
-;;(dc-yasnippet-tow-more-camal-case-p "A")
+;;(dc-yasnippet-uppercase-in-camal-case->= "AA" 2)
+;;(dc-yasnippet-uppercase-in-camal-case->= "A" 2)
 
 ;;; common ends here
 
@@ -75,14 +81,14 @@ example: CamelCase cc."
  dc-yasnippet-java-keyword-package "package"
  dc-yasnippet-java-keyword-none "none"
  dc-yasnippet-java-keyword-list '(dc-yasnippet-java-keyword-import
-                            dc-yasnippet-java-keyword-package
-                            dc-yasnippet-java-keyword-none)
+                                  dc-yasnippet-java-keyword-package
+                                  dc-yasnippet-java-keyword-none)
 
  ;; For c++
  dc-yasnippet-cpp-keyword-include "#include"
  dc-yasnippet-cpp-keyword-none "none"
  dc-yasnippet-cpp-keyword-list '(dc-yasnippet-cpp-keyword-include
-                           dc-yasnippet-cpp-keyword-none)
+                                 dc-yasnippet-cpp-keyword-none)
 
  ;; Python
  dc-yasnippet-python-keyword-import "import"
@@ -90,45 +96,40 @@ example: CamelCase cc."
  dc-yasnippet-python-keyword-path "#!"
  dc-yasnippet-python-keyword-none "none"
  dc-yasnippet-python-keyword-list '(dc-yasnippet-python-keyword-import
-                              dc-yasnippet-python-keyword-from
-                              dc-yasnippet-python-keyword-path
-                              dc-yasnippet-python-keyword-none)
+                                    dc-yasnippet-python-keyword-from
+                                    dc-yasnippet-python-keyword-path
+                                    dc-yasnippet-python-keyword-none)
 
  ;; Define mode's information
  dc-yasnippet-mode-info-list '((emacs-lisp-mode
-                          dc-yasnippet-elisp-keyword-list
-                          dc-yasnippet-elisp-go-place
-                          dc-yasnippet-elisp-to-be-found-code
-                          dc-yasnippet-elisp-code-rules)
+                                dc-yasnippet-elisp-keyword-list
+                                dc-yasnippet-elisp-go-place
+                                dc-yasnippet-elisp-to-be-found-code
+                                dc-yasnippet-elisp-code-rules)
 
-                         (java-mode
-                          dc-yasnippet-java-keyword-list
-                          dc-yasnippet-java-go-place
-                          dc-yasnippet-java-to-be-found-code
-                          dc-yasnippet-java-code-rules)
+                               (java-mode
+                                dc-yasnippet-java-keyword-list
+                                dc-yasnippet-java-go-place
+                                dc-yasnippet-java-to-be-found-code
+                                dc-yasnippet-java-code-rules)
 
-                         (c++-mode
-                          dc-yasnippet-cpp-keyword-list
-                          dc-yasnippet-cpp-go-place
-                          dc-yasnippet-cpp-to-be-found-code
-                          dc-yasnippet-cpp-code-rules)
+                               (c++-mode
+                                dc-yasnippet-cpp-keyword-list
+                                dc-yasnippet-cpp-go-place
+                                dc-yasnippet-cpp-to-be-found-code
+                                dc-yasnippet-cpp-code-rules)
 
-                         (python-mode
-                          dc-yasnippet-python-keyword-list
-                          dc-yasnippet-python-go-place
-                          dc-yasnippet-python-to-be-found-code
-                          dc-yasnippet-python-code-rules))
+                               (python-mode
+                                dc-yasnippet-python-keyword-list
+                                dc-yasnippet-python-go-place
+                                dc-yasnippet-python-to-be-found-code
+                                dc-yasnippet-python-code-rules))
 
  ;; Define callbacks
  dc-yasnippet-keyword-list nil
  dc-yasnippet-go-place-func nil
  dc-yasnippet-to-be-found-code-func nil
  dc-yasnippet-code-rules-function nil)
-
-(defun tellme (encode)
-  "adaptor"
-  (interactive)
-  (dc-yasnippet encode))
 
 ;;;###autoload
 (defun dc-yasnippet(encode)
@@ -209,34 +210,35 @@ code is going to be codes."
       ;; support major mode?
       (when (dc-yasnippet-support-major-mode-p)
         ;; search buffer for code list
-        (setq snippet-list (dc-yasnippet-snippet-search))
+        (setq snippet-list (dc-yasnippet-search))
         ;; new snippets
         (dolist (snippet-variable-list snippet-list)
-          (setq create-p (dc-yasnippet-new-snippet-file snippet-variable-list))
+          (setq create-p (dc-yasnippet-new-and-load snippet-variable-list))
           (when (and create-p (not need-reload-yas))
             (setq need-reload-yas t)))
         (unless need-reload-yas
           (message "Not found code to new snippet."))))))
 
 ;;;###autoload
-(defun dc-yasnippet-snippet-file-name (code)
-  "Create snippet full file name.
+(defun dc-yasnippet-file-name (snippet-name)
+  "Create snippet full file name."
 
-code is using this to concatenate file name."
-  (let* (dir file)
+  (let* ((dir)                          ; Default dir
+         (full-file-name)
+         (current-url-file-directory)
+         (file-path-name (replace-regexp-in-string "\\." "/" snippet-name))) ; From under dir to file-name
     (setq dir (concat yas--default-user-snippets-dir "/"
-                      (symbol-name major-mode) "/dc-yasnippet")
-          file (concat dir "/" code))
-    (unless (file-exists-p dir)
-      (dired-create-directory dir)
-      )
-    file))
+                      (symbol-name major-mode) "/"
+                      dc-yasnippet-dir)
+          full-file-name (concat dir "/" file-path-name))
+    (unless (file-exists-p (url-file-directory full-file-name))
+      (dired-create-directory (url-file-directory full-file-name)))
+    (concat full-file-name ".snippet")))
 
-;; (dc-yasnippet-snippet-file-name "java.test.ja")
-(replace-regexp-in-string "\\." "/"  "test.test.")
+;; (dc-yasnippet-file-name "java.test.java")
 
 ;;;###autoload
-(defun dc-yasnippet-snippet-search ()
+(defun dc-yasnippet-search ()
   "Search code that using at create snippets in current buffer.
 
 Returns snippet list using with create snippets,
@@ -300,7 +302,7 @@ each atom on each snippet."
          (car (cdr (car guessed-directories))))))
 
 ;;;###autoload
-(defun dc-yasnippet-new-snippet-file (snippet-variable-list)
+(defun dc-yasnippet-new-and-load (snippet-variable-list)
   "Create snippet file and write contents.
 
 snippet-variable-list :
@@ -314,7 +316,7 @@ snippet-variable-list :
          (code (nth 3 snippet-variable-list))
          snippet-content file-name ret)
 
-    (setq file-name (dc-yasnippet-snippet-file-name name))
+    (setq file-name (dc-yasnippet-file-name name))
     (unless (file-exists-p file-name)
       (setq ret t)
 
@@ -331,10 +333,10 @@ snippet-variable-list :
                                       "`"))
         ;; Insert contents.
         (insert snippet-content)
-        (yas-maybe-load-snippet-buffer)
-        )
+        (yas-maybe-load-snippet-buffer))
+
       (message (concat "snippet "
-                       (dc-yasnippet-snippet-file-name name)
+                       (dc-yasnippet-file-name name)
                        " created successed.")))
     ret))
 
@@ -409,9 +411,9 @@ keyword is for general purpose and extension."
         (let* ((ret ()) cur-code)
           (setq cur-code (substring code 10 -1))
           (dc-yasnippet-snippet-variable-list cur-code
-                                        cur-code
-                                        cur-code
-                                        code))))))
+                                              cur-code
+                                              cur-code
+                                              code))))))
 ;;; Ends here for elisp
 
 ;;; For java
@@ -459,14 +461,14 @@ Returns ((expression)(rules))."
           (setq class-key (dc-yasnippet-java-snippet-key class-text))
           (setq class-name class-code)
           (dc-yasnippet-snippet-variable-list class-name
-                                        class-key
-                                        class-text
-                                        code))))))
+                                              class-key
+                                              class-text
+                                              code))))))
 ;;;###autoload
 (defun dc-yasnippet-java-snippet-key (str)
   "生成java snippet key。"
   (let* ((ret))
-    (if (dc-yasnippet-tow-more-camal-case-p str)
+    (if (dc-yasnippet-uppercase-in-camal-case->= str 2)
         (setq ret (dc-yasnippet-uppercase-from-camel-case str))
       ;; Using first four letters;
       (progn
@@ -521,9 +523,9 @@ Returns ((expression)(rules))."
           (setq class-key (downcase class-text))
           (setq class-name class-code)
           (dc-yasnippet-snippet-variable-list class-name
-                                        class-key
-                                        class-text
-                                        code))))))
+                                              class-key
+                                              class-text
+                                              code))))))
 ;;; Ends here for c++
 
 ;;; For python
@@ -582,9 +584,9 @@ Returns (((expression)(rules))...)."
                                    "."
                                    class-text))
           (dc-yasnippet-snippet-variable-list class-name
-                                        class-key
-                                        class-text
-                                        code)))
+                                              class-key
+                                              class-text
+                                              code)))
      )(
      '(concat "^" dc-yasnippet-python-keyword-import " .*$")
      '(progn
@@ -598,12 +600,11 @@ Returns (((expression)(rules))...)."
           (setq class-key (downcase class-text))
           (setq class-name class-code)
           (dc-yasnippet-snippet-variable-list class-name
-                                        class-key
-                                        class-text
-                                        code))))))
+                                              class-key
+                                              class-text
+                                              code))))))
 ;;; ends here for python
 
 (provide 'dc-yasnippet)
 
 ;;; dc-yasnippet.el ends here
-
